@@ -30,9 +30,6 @@ import java.io.IOException;
 public class BiMessageConsumer {
 
     @Resource
-    private RabbitTemplate rabbitTemplate;
-
-    @Resource
     private ChartService chartService;
 
     @Resource

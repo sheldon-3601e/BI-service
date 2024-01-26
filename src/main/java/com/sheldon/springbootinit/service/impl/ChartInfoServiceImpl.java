@@ -51,9 +51,6 @@ public class ChartInfoServiceImpl extends ServiceImpl<ChartMapper, Chart>
     @Resource
     private AiManager aiManager;
 
-    @Resource
-    private ThreadPoolExecutor threadPoolExecutor;
-
     /**
      * 获取查询包装类
      *
