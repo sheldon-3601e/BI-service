@@ -1,8 +1,6 @@
 package com.sheldon.springbootinit.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.sheldon.springbootinit.model.dto.chart.ChartQueryRequest;
 import com.sheldon.springbootinit.model.entity.Chart;
 
 /**
@@ -12,12 +10,6 @@ import com.sheldon.springbootinit.model.entity.Chart;
 */
 public interface ChartService extends IService<Chart> {
 
-    /**
-     * 获取查询条件
-     *
-     * @param postQueryRequest
-     * @return
-     */
-    QueryWrapper<Chart> getQueryWrapper(ChartQueryRequest chartQueryRequest);
+
 
 }

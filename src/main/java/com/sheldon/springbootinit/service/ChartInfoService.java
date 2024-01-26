@@ -1,8 +1,6 @@
 package com.sheldon.springbootinit.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.sheldon.springbootinit.model.dto.chart.ChartQueryRequest;
 import com.sheldon.springbootinit.model.entity.Chart;
 
 import java.util.List;
@@ -16,33 +14,12 @@ import java.util.Map;
 public interface ChartInfoService extends IService<Chart> {
 
     /**
-     * 获取查询条件
-     *
-     * @param postQueryRequest
-     * @return
-     */
-    QueryWrapper<Chart> getQueryWrapper(ChartQueryRequest chartQueryRequest);
-
-    /**
-     * 根据图表 Id 和图表内容动态创建数据库表
-     * @param data
-     * @param chartId
-     */
-    void createChartInfo(String data, Long chartId);
-
-    /**
      * 根据图表 Id 动态查询数据库表
      * @param chartId
      * @param chartId
      */
     List<Map<String, Object>> getChartInfoById(Long chartId);
 
-    /**
-     * 根据图表 Id 动态删除数据库表
-     * @param chartId
-     * @param chartId
-     */
-    boolean deleteChartInfoById(Long chartId);
 
     /**
      * 异步请求 AI 生成结果
