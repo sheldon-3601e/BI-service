@@ -1,16 +1,11 @@
 package com.sheldon.springbootinit.bizmq;
 
 import com.rabbitmq.client.Channel;
-import com.sheldon.springbootinit.common.ErrorCode;
-import com.sheldon.springbootinit.exception.BusinessException;
-import com.sheldon.springbootinit.model.entity.Chart;
-import com.sheldon.springbootinit.model.enums.ChartStatueEnum;
 import com.sheldon.springbootinit.service.ChartInfoService;
 import com.sheldon.springbootinit.service.ChartService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
@@ -27,7 +22,7 @@ import java.io.IOException;
  */
 @Component
 @Slf4j
-public class BiMessageConsumer {
+public class WaitingMsgConsumer {
 
     @Resource
     private ChartService chartService;
@@ -35,10 +30,32 @@ public class BiMessageConsumer {
     @Resource
     private ChartInfoService chartInfoService;
 
+    @Resource
+    private MsgProducer msgProducer;
+
     @RabbitListener(queues = {BiMqConstant.QUEUE_WAITING_NAME}, ackMode = "MANUAL")
     public void sendMessage(String message, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) Long deliveryTag) {
-        log.info("接收到消息：{}", message);
-        try {
+        log.info("接收等待分析图表信息：{}", message);
+        if (!StringUtils.isBlank(message)){
+            if ("succeed".equals(message)) {
+                log.info("succeed");
+                try {
+                    msgProducer.sendSucceedMsg(message);
+                    channel.basicAck(deliveryTag, false);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            } else {
+                try {
+                    log.error("failed");
+                    channel.basicNack(deliveryTag, false, false);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return;
+   /*     try {
             // 校验消息
             if (StringUtils.isBlank(message)) {
                 // 如果更新失败，拒绝当前消息，让消息重新进入队列
@@ -74,7 +91,7 @@ public class BiMessageConsumer {
             } catch (IOException ex) {
                 log.error("消息拒绝失败：{}", ex.getMessage());
             }
-        }
+        }*/
     }
 
 }
