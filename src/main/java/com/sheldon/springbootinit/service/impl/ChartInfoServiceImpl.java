@@ -2,7 +2,12 @@ package com.sheldon.springbootinit.service.impl;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.github.rholder.retry.Retryer;
+import com.github.rholder.retry.RetryerBuilder;
+import com.github.rholder.retry.StopStrategies;
+import com.github.rholder.retry.WaitStrategies;
 import com.sheldon.springbootinit.common.ErrorCode;
+import com.sheldon.springbootinit.constant.AiConstant;
 import com.sheldon.springbootinit.exception.BusinessException;
 import com.sheldon.springbootinit.manager.AiManager;
 import com.sheldon.springbootinit.mapper.ChartInfoMapper;
@@ -12,6 +17,7 @@ import com.sheldon.springbootinit.model.enums.ChartStatueEnum;
 import com.sheldon.springbootinit.service.ChartInfoService;
 import com.sheldon.springbootinit.service.ChartService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.retry.RetryException;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -19,6 +25,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -39,6 +47,13 @@ public class ChartInfoServiceImpl extends ServiceImpl<ChartMapper, Chart>
 
     @Resource
     private AiManager aiManager;
+
+    // 添加重试机制
+    Retryer<String[]> retryer = RetryerBuilder.<String[]>newBuilder()
+            .retryIfResult(res -> res.length != 3)  // 设置根据结果重试，当split长度不等于3时重试
+            .withWaitStrategy(WaitStrategies.fixedWait(3, TimeUnit.SECONDS)) // 设置等待间隔时间
+            .withStopStrategy(StopStrategies.stopAfterAttempt(3)) // 设置最大重试次数
+            .build();
 
     @Override
     public List<Map<String, Object>> getChartInfoById(Long chartId) {
@@ -85,24 +100,21 @@ public class ChartInfoServiceImpl extends ServiceImpl<ChartMapper, Chart>
             if (!res) {
                 log.warn("图表分析保存失败");
             }
-//
-//            // 调用 AI 服务进行图表分析
-//            String result = aiManager.doChart(AiConstant.MODEL_ID, userInputString);
-//            if (StrUtil.isEmpty(result)) {
-//                throw new BusinessException(ErrorCode.OPERATION_ERROR, "AI服务异常");
-//            }
-//
-//            // 解析结果
-//            String[] split = result.split("【【【【【");
-//            if (split.length != 3) {
-//                throw new BusinessException(ErrorCode.OPERATION_ERROR, "AI服务异常");
-//            }
-//
-//            String genCart = split[1];
-//            String genResult = split[2];
+
+            // 调用 AI 服务进行图表分析
+            String[] split = null;
+            try {
+                split = retryer.call(() -> aiManager.doChart(AiConstant.MODEL_ID, userInputString).split("【【【【【"));
+            } catch (ExecutionException | RetryException e) {
+                // 重试失败，抛出异常
+                throw new BusinessException(ErrorCode.OPERATION_ERROR, "AI服务异常");
+            }
+
+            String genCart = split[1];
+            String genResult = split[2];
 
             // 创建模拟数据
-            String genCart = ("{\n" +
+            /*String genCart = ("{\n" +
                     "    \"title\": {\n" +
                     "        \"text\": \"网站用户人数趋势\",\n" +
                     "        \"subtext\": \"数据来源：Raw data\"\n" +
@@ -131,7 +143,7 @@ public class ChartInfoServiceImpl extends ServiceImpl<ChartMapper, Chart>
                     "网站用户数量逐渐增长，周六和周日用户数量较多，周一用户数量较少，周二到周五用户数量逐渐增多，" +
                     "网站用户数量逐渐增长，周六和周日用户数量较多，周一用户数量较少，周二到周五用户数量逐渐增多，" +
                     "网站用户数量逐渐增长，周六和周日用户数量较多，周一用户数量较少，周二到周五用户数量逐渐增多网站用户数量逐渐增长，周六和周日用户数量较多，周一用户数量较少，周二到周五用户数量逐渐增多网站用户数量逐渐增长，周六和周日用户数量较多，周一用户数量较少，周二到周五用户数量逐渐增多网站用户数量逐渐增长，周六和周日用户数量较多，周一用户数量较少，周二到周五用户数量逐渐增多网站用户数量逐渐增长，周六和周日用户数量较多，周一用户数量较少，周二到周五用户数量逐渐增多");
-
+*/
             Chart updateChartResult = new Chart();
             updateChartResult.setId(chartId);
             updateChartResult.setStatus(ChartStatueEnum.SUCCEED.getValue());
@@ -150,6 +162,8 @@ public class ChartInfoServiceImpl extends ServiceImpl<ChartMapper, Chart>
         }
     }
 
+
+    // 从单表中获取图表数据
     public String getChartDataById(Long chartId, String dataKeys) {
 
         // 获得图表数据的 key
@@ -159,21 +173,19 @@ public class ChartInfoServiceImpl extends ServiceImpl<ChartMapper, Chart>
         // 获取图表数据的 value
         List<Map<String, Object>> chartDataList = this.getChartInfoById(chartId);
         // 将图表数据转换为 csv 格式
-        String convert = convert(chartDataList, list);
-        return convert;
+        return convert(chartDataList, list);
     }
 
+    // 将图表数据转换为 csv 格式
     public static String convert(List<Map<String, Object>> dataList, List<String> keys) {
         String header = String.join(",", keys);
 
-        String result = dataList.stream()
+        return dataList.stream()
                 .map(data -> keys.stream()
                         .map(data::get)
                         .map(value -> value != null ? value.toString() : "")
                         .collect(Collectors.joining(",")))
                 .collect(Collectors.joining("\n", header + "\n", ""));
-
-        return result;
     }
 
 }
