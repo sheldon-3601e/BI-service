@@ -21,10 +21,7 @@ import org.springframework.retry.RetryException;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -104,7 +101,10 @@ public class ChartInfoServiceImpl extends ServiceImpl<ChartMapper, Chart>
             // 调用 AI 服务进行图表分析
             String[] split = null;
             try {
+                log.info("AI服务开始执行");
                 split = retryer.call(() -> aiManager.doChart(AiConstant.MODEL_ID, userInputString).split("【【【【【"));
+                log.info("AI服务执行成功");
+                log.info("结果：" + Arrays.toString(split));
             } catch (ExecutionException | RetryException e) {
                 // 重试失败，抛出异常
                 throw new BusinessException(ErrorCode.OPERATION_ERROR, "AI服务异常");
